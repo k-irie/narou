@@ -19,6 +19,8 @@ function getNarou($url , $params ){
     $json = '';
     global $db,$db_error;
 
+    // var_dump($params);
+
     try{
         $curl = curl_init();
 
@@ -33,13 +35,17 @@ function getNarou($url , $params ){
         curl_setopt($curl, CURLOPT_HTTPHEADER, ['User-Agent: NarouCrawler/000100']);
 
         $response = curl_exec($curl);
-        $json = gzdecode($response);
+        if (strncmp($response, 'Error', 5) < 0){
+            $json = gzdecode($response);
 
-        curl_close($curl);
-        
-        $json = json_decode($json ,true);
+            // $json = json_decode($json ,true);
+        }else {
+            $json = null;
+        }
     }catch(Exception $e){
         $db_error[] = $e->getMessage();
+    }finally{
+        curl_close($curl);
     }
     return $json;
 }
@@ -64,12 +70,13 @@ function getNovelInfo($ncode){
         $result['data'] = $row;
     }else{
         $result['mode'] = 'online';
-        $row = getNarou($url_ncode,$params);
-        // var_dump($row);
+        $json = getNarou($url_ncode,$params);
+        logWrite("data","getNovelInfo",$row);
+        $row = json_decode($json);
         addTable('novel',$row[1]);
         $result['data'] = $row;
     }
-    $result['error'] = $db_error; 
+    $result['error'][] = $db_error; 
     return $result;
 }
 
@@ -95,16 +102,22 @@ function getRankng($date, $mode='d'){
     }else{
         $result['mode'] = 'online';
         // echo "get online";
-        $result = getNarou($url_ranking,$params);
+        $json = getNarou($url_ranking,$params);
         // addRanking($params['rtype'] ,json_encode( $result));
-        addTable('ranking',array('rtype'=>$params['rtype'],'json'=>json_encode($result)));
-        // var_dump($db_error);
+        if($json){
+            addTable('ranking',array('rtype'=>$params['rtype'],'json'=>mb_strtolower($json)));
+            // var_dump($db_error);
+        }else{
+            $result['error'][] = 'データがありません';
+        }
     }
     
     if ($json){
-        $result['data'] = json_decode($json);
+        $result['data'] = json_decode($json,true);
     }
 
-    $result['error'] = $db_error; 
+    if (count($db_error) > 0){
+        $result['error'][] = $db_error; 
+    }
     return $result;
 }
