@@ -72,7 +72,7 @@ function getNovelInfo($ncode){
         $result['mode'] = 'online';
         $json = getNarou($url_ncode,$params);
         logWrite("data","getNovelInfo",$row);
-        $row = json_decode($json);
+        $row = json_decode($json,true);
         addTable('novel',$row[1]);
         $result['data'] = $row;
     }
